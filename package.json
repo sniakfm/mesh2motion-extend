@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "tauri": "tauri"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

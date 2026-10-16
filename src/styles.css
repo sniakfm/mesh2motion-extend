@@ -1086,3 +1086,70 @@ div.modal-dialog-body p.survey-thank-you {
     display: none;
 }
 
+/* Animation context menu (right-click) */
+.anim-context-menu {
+    position: fixed;
+    z-index: 99999;
+    min-width: 175px;
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+    padding: 0.35rem 0;
+    font-family: inherit;
+    user-select: none;
+    overflow: hidden;
+}
+
+.anim-context-menu-header {
+    padding: 0.4rem 0.8rem 0.3rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--text-alternate);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid color-mix(in srgb, var(--bg-tertiary) 40%, transparent);
+    margin-bottom: 0.2rem;
+}
+
+.anim-context-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0.85rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.anim-context-menu-item:hover:not(:disabled) {
+    background: var(--button-primary-bg);
+    color: white;
+}
+
+.anim-context-menu-item.danger {
+    color: #ff6b6b;
+}
+
+.anim-context-menu-item.danger:hover:not(:disabled) {
+    background: #e74c3c;
+    color: white;
+}
+
+.anim-context-menu-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.anim-action-modal {
+    max-width: 440px;
+    width: 90%;
+}
+

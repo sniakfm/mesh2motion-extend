@@ -6,6 +6,8 @@ import { type TransformedAnimationClipPair } from './interfaces/TransformedAnima
 import { type AnimationExportSelection, type AnimationMirrorExportMode } from './interfaces/AnimationExportSelection'
 import { AnimationRequestDialog } from '../../components/animation-request/AnimationRequestDialog'
 
+export type AnimationViewMode = 'all' | 'library' | 'imported' | 'selected'
+
 export class AnimationSearch extends EventTarget {
   private all_animations: AnimationWithState[] = []
   private readonly filter_input: HTMLInputElement | null = null
@@ -17,6 +19,7 @@ export class AnimationSearch extends EventTarget {
 
   private custom_event: CustomEvent | null = null
   private show_selected_only: boolean = false
+  private view_mode: AnimationViewMode = 'all'
 
   private static readonly mirror_mode_cycle: AnimationMirrorExportMode[] = ['none', 'mirrored', 'both']
 
@@ -241,10 +244,72 @@ export class AnimationSearch extends EventTarget {
     return this.filtered_animations_list
   }
 
-  public set_show_selected_only (show_selected: boolean): void {
-    this.show_selected_only = show_selected
+  public set_view_mode (mode: AnimationViewMode): void {
+    this.view_mode = mode
+    this.show_selected_only = (mode === 'selected')
     const filter_text = this.filter_input?.value.toLowerCase() ?? ''
     this.render_filtered_animations(filter_text)
+    this.dispatchEvent(new CustomEvent('view-mode-changed', { detail: { mode } }))
+  }
+
+  public get_view_mode (): AnimationViewMode {
+    return this.view_mode
+  }
+
+  public set_show_selected_only (show_selected: boolean): void {
+    this.set_view_mode(show_selected ? 'selected' : 'all')
+  }
+
+  public refresh_ui (): void {
+    const filter_text = this.filter_input?.value.toLowerCase() ?? ''
+    this.render_filtered_animations(filter_text)
+  }
+
+  public update_animation_name_by_index (index: number, new_name: string): void {
+    if (index >= 0 && index < this.all_animations.length) {
+      this.all_animations[index].name = new_name
+      this.refresh_ui()
+    }
+  }
+
+  public remove_animation_by_index (index: number, storageId?: string): AnimationWithState | null {
+    let target_index = -1
+    if (storageId != null && storageId !== '') {
+      target_index = this.all_animations.findIndex(
+        anim => anim.metadata?.custom_storage_id === storageId || anim.metadata?.fileName === storageId
+      )
+    }
+    if (target_index === -1 && index >= 0 && index < this.all_animations.length) {
+      target_index = index
+    }
+
+    if (target_index >= 0 && target_index < this.all_animations.length) {
+      const [removed] = this.all_animations.splice(target_index, 1)
+      this.refresh_ui()
+      this.custom_event = new CustomEvent('export-options-changed', {
+        detail: {
+          selectedAnimations: this.get_selected_animation_indices(),
+          exportAnimationCount: this.get_selected_export_animation_count()
+        }
+      })
+      this.dispatchEvent(this.custom_event)
+      this.dispatchEvent(new CustomEvent('filtered-animations-listing', {
+        detail: { selectedAnimations: this.get_selected_animation_indices() }
+      }))
+      return removed
+    }
+    return null
+  }
+
+  public get_animation_by_index (index: number): AnimationWithState | null {
+    if (index >= 0 && index < this.all_animations.length) {
+      return this.all_animations[index]
+    }
+    return null
+  }
+
+  public get_all_animations (): AnimationWithState[] {
+    return this.all_animations
   }
 
   private render_filtered_animations (filter_text: string): void {
@@ -252,17 +317,26 @@ export class AnimationSearch extends EventTarget {
       return
     }
 
-    // Filter animations based on search text and selected-only mode
+    // Filter animations based on search text and view mode
     this.filtered_animations_list = this.all_animations.filter(animation => {
-
       // some animation names have underscores (even though that isn't shown on UI), others have spaces. 
       // we need to support both for searching to get a consistent match
       const matches_search = animation.name.toLowerCase().replace(/_/g, ' ').includes(filter_text.toLowerCase().trim())
-
-      if (this.show_selected_only) {
-        return matches_search && animation.isChecked === true
+      if (!matches_search) {
+        return false
       }
-      return matches_search
+
+      if (this.view_mode === 'selected') {
+        return animation.isChecked === true
+      }
+      if (this.view_mode === 'imported') {
+        return animation.metadata?.source_type === 'custom-import'
+      }
+      if (this.view_mode === 'library') {
+        return animation.metadata?.source_type !== 'custom-import'
+      }
+
+      return true
     })
 
     // Clear and rebuild the animation list
@@ -300,19 +374,30 @@ export class AnimationSearch extends EventTarget {
       const anim_name: string = animation_clip.name
       const theme_name: string = this.theme_manager.get_current_theme()
       const is_custom_animation = animation_clip.metadata?.source_type === 'custom-import'
+      const custom_storage_id = animation_clip.metadata?.custom_storage_id ?? ''
+      const file_path = animation_clip.metadata?.filePath ?? ''
+      const file_name = animation_clip.metadata?.fileName ?? ''
 
       const preview_data_src_attribute = is_custom_animation
         ? ''
         : ` data-src="../animpreviews/${preview_folder}/${theme_name}_${anim_name}.mp4"`
 
       const custom_animation_badge_html = is_custom_animation
-        ? '<span class="anim-custom-badge" title="Custom animation" aria-label="Custom animation">C</span>'
+        ? '<span class="anim-custom-badge" title="Custom animation (Right-click for options)" aria-label="Custom animation">C</span>'
         : ''
 
       const mirror_export_mode = animation_clip.mirror_export_mode ?? 'none'
       const mirror_toggle_label = this.get_mirror_toggle_label(mirror_export_mode)
       const animation_entry_html = `
-        <div class="${is_custom_animation ? 'anim-custom-item' : 'anim-item'}" data-animation-index="${original_index}" data-selected="${was_checked ? 'true' : 'false'}" data-mirror-mode="${mirror_export_mode}">
+        <div class="${is_custom_animation ? 'anim-custom-item' : 'anim-item'}"
+             data-animation-index="${original_index}"
+             data-selected="${was_checked ? 'true' : 'false'}"
+             data-mirror-mode="${mirror_export_mode}"
+             data-custom="${is_custom_animation ? 'true' : 'false'}"
+             data-storage-id="${custom_storage_id}"
+             data-file-path="${file_path}"
+             data-file-name="${file_name}"
+             data-animation-name="${animation_clip.name}">
           <button class="secondary-button play anim-play-button" data-action="play-animation" data-index="${original_index}" aria-label="Play ${this.animation_name_clean(animation_clip.name)}">
             ${custom_animation_badge_html}
             <div class="anim-preview-placeholder"${preview_data_src_attribute}></div>
@@ -360,6 +445,10 @@ export class AnimationSearch extends EventTarget {
    * Only loads video elements when their placeholders are visible in the viewport.
    */
   private setup_lazy_video_loading (): void {
+    if (typeof IntersectionObserver === 'undefined') {
+      return
+    }
+
     // Only set up IntersectionObserver if the container exists
     // any animation entry that is in view will run this code to convert it to a video element
     const observer = new IntersectionObserver((entries: IntersectionObserverEntry[], _obs: IntersectionObserver) => {

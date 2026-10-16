@@ -329,11 +329,15 @@
           <div id="animations-listing">
             <!-- Filter textbox and tab switcher side by side -->
             <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                <!-- Tab switcher for Library vs Selected animations -->
+                <!-- Tab switcher for All, Library, Imported, and Selected animations -->
                 <div class="pill-switch-group" aria-label="Animation view mode" style="margin: 0;">
                     <div class="pill-switch">
-                        <input type="radio" id="animation-view-library" name="animation-view-mode" value="library" checked />
+                        <input type="radio" id="animation-view-all" name="animation-view-mode" value="all" checked />
+                        <label for="animation-view-all">All</label>
+                        <input type="radio" id="animation-view-library" name="animation-view-mode" value="library" />
                         <label for="animation-view-library">Library</label>
+                        <input type="radio" id="animation-view-imported" name="animation-view-mode" value="imported" />
+                        <label for="animation-view-imported">Imported</label>
                         <input type="radio" id="animation-view-selected" name="animation-view-mode" value="selected" />
                         <label for="animation-view-selected">Selected</label>
                     </div>

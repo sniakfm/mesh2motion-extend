@@ -1,2 +1,5 @@
 **/node_modules/**
 dist/**
+dist_desktop/**
+src-tauri/target/**
+*.exe

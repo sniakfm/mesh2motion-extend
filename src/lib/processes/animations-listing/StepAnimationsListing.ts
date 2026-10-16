@@ -15,10 +15,11 @@ import { SkeletonType } from '../../enums/SkeletonType.ts'
 import { RigConfig } from '../../RigConfig.ts'
 import { Utility } from '../../Utilities.ts'
 import { type ThemeManager } from '../../ThemeManager.ts'
-import { AnimationSearch } from './AnimationSearch.ts'
+import { AnimationSearch, type AnimationViewMode } from './AnimationSearch.ts'
 import { type AnimationClipMetadata, type TransformedAnimationClipPair } from './interfaces/TransformedAnimationClipPair.ts'
 import { type AnimationExportSelection } from './interfaces/AnimationExportSelection.ts'
 import { PropsManager } from './props/PropsManager.ts'
+import { AnimationContextMenu } from './AnimationContextMenu.ts'
 
 // Note: EventTarget is a built-ininterface and do not need to import it
 export class StepAnimationsListing extends EventTarget {
@@ -54,6 +55,7 @@ export class StepAnimationsListing extends EventTarget {
 
   // Animation search functionality
   public animation_search: AnimationSearch | null = null
+  private animation_context_menu: AnimationContextMenu | null = null
 
   public set_animations_file_path (path: string): void {
     this.animations_file_path = path
@@ -86,6 +88,13 @@ export class StepAnimationsListing extends EventTarget {
       const new_clips = (event as CustomEvent<TransformedAnimationClipPair[]>).detail
       this.animation_clips_loaded.push(...new_clips)
       this.onAllAnimationsLoaded()
+
+      // Switch to Imported view mode to immediately surface imported animations
+      const imported_radio = document.querySelector('input[name="animation-view-mode"][value="imported"]') as HTMLInputElement | null
+      if (imported_radio != null) {
+        imported_radio.checked = true
+        this.animation_search?.set_view_mode('imported')
+      }
     })
   }
 
@@ -508,13 +517,13 @@ export class StepAnimationsListing extends EventTarget {
       this.play_animation(this.current_playing_index)
     })
 
-    // event listener for animation view mode tabs (Library vs Selected)
+    // event listener for animation view mode tabs (All vs Library vs Imported vs Selected)
     const animation_view_radios = document.querySelectorAll('input[name="animation-view-mode"]')
     animation_view_radios.forEach((radio) => {
       radio.addEventListener('change', (event) => {
         const target = event.target as HTMLInputElement
-        const show_selected_only = target.value === 'selected'
-        this.animation_search?.set_show_selected_only(show_selected_only)
+        const mode = target.value as AnimationViewMode
+        this.animation_search?.set_view_mode(mode)
       })
     })
 
@@ -542,6 +551,40 @@ export class StepAnimationsListing extends EventTarget {
 
     // Use the animation search class to handle the UI
     this.animation_search.initialize_animations(animation_clips_to_load)
+
+    // Setup right-click context menu (Change Name, Delete)
+    this.animation_context_menu = new AnimationContextMenu(
+      this.animation_search,
+      () => this.animation_clips_loaded,
+      (deletedIndex, storageId) => {
+        let idx = -1
+        if (storageId != null && storageId !== '') {
+          idx = this.animation_clips_loaded.findIndex(
+            pair => pair.metadata?.custom_storage_id === storageId || pair.metadata?.fileName === storageId
+          )
+        }
+        if (idx === -1 && deletedIndex >= 0 && deletedIndex < this.animation_clips_loaded.length) {
+          idx = deletedIndex
+        }
+
+        if (idx >= 0 && idx < this.animation_clips_loaded.length) {
+          this.animation_clips_loaded.splice(idx, 1)
+        }
+
+        if (this.current_playing_index === idx) {
+          if (this.animation_clips_loaded.length > 0) {
+            this.play_animation(0)
+          } else {
+            this.animation_player.clear_animation()
+          }
+        } else if (this.current_playing_index > idx) {
+          this.current_playing_index--
+        }
+
+        this.update_download_button_enabled()
+        this.update_filtered_animation_listing_ui()
+      }
+    )
   }
 
   public get_animated_selected_elements (): NodeListOf<Element> {

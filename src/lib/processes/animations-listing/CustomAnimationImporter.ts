@@ -1,5 +1,6 @@
 import { UI } from '../../UI.ts'
 import { ModalDialog } from '../../ModalDialog.ts'
+import { CustomAnimationStorage } from './CustomAnimationStorage.ts'
 import { type AnimationClip, type SkinnedMesh } from 'three'
 import { type AnimationLoader } from './AnimationLoader.ts'
 import CustomAnimationValidation from './CustomAnimationValidation.ts'
@@ -120,10 +121,43 @@ export class CustomAnimationImporter extends EventTarget {
         metadata_override
       )
 
+      // Replace default/generic mixamo clip names with cleaner base file name
+      const base_file_name = file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ')
+      const file_path = (file as any).path || (file as any).webkitRelativePath || file.name
+
+      new_animation_clips.forEach((clip_pair, index) => {
+        const raw_name = clip_pair.display_animation_clip.name.trim().toLowerCase()
+        if (raw_name === 'mixamo.com' || raw_name.includes('mixamo') || raw_name === '') {
+          const clean_name = new_animation_clips.length > 1
+            ? `${base_file_name} ${index + 1}`
+            : base_file_name
+          clip_pair.display_animation_clip.name = clean_name
+          clip_pair.original_animation_clip.name = clean_name
+        }
+        clip_pair.metadata.custom_storage_id = file.name
+        clip_pair.metadata.fileName = file.name
+        clip_pair.metadata.filePath = file_path
+      })
+
       // Validate custom animations against our target skeleton
       const animation_clip_names_imported = new_animation_clips.map(clip_pair => clip_pair.display_animation_clip.name).join(', ')
       const clips_to_validate: AnimationClip[] = new_animation_clips.map((clip_pair) => clip_pair.display_animation_clip)
       CustomAnimationValidation.validate_animation_bones_match(clips_to_validate, this.skinned_meshes_to_animate)
+
+      // Persist the imported animation GLB to IndexedDB storage
+      try {
+        const array_buffer = await file.arrayBuffer()
+        await CustomAnimationStorage.save_animation(
+          file.name,
+          animation_clip_names_imported,
+          file.name,
+          array_buffer,
+          undefined,
+          file_path
+        )
+      } catch (storage_err) {
+        console.warn('Failed to save animation to persistent storage:', storage_err)
+      }
 
       this.dispatchEvent(new CustomEvent<TransformedAnimationClipPair[]>('import-success', {
         detail: new_animation_clips

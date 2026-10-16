@@ -3,6 +3,24 @@ import { IncompatibleSkeletonError, LoadError, NoAnimationsError } from './Anima
 import { ModalDialog } from '../../ModalDialog.ts'
 
 export default class CustomAnimationValidation {
+  static readonly STANDARD_HUMAN_BONES = [
+    'root', 'pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'head', 'head_leaf',
+    'clavicle_l', 'upperarm_l', 'lowerarm_l', 'hand_l',
+    'thumb_01_l', 'thumb_02_l', 'thumb_03_l', 'thumb_04_leaf_l',
+    'index_01_l', 'index_02_l', 'index_03_l', 'index_04_leaf_l',
+    'middle_01_l', 'middle_02_l', 'middle_03_l', 'middle_04_leaf_l',
+    'ring_01_l', 'ring_02_l', 'ring_03_l', 'ring_04_leaf_l',
+    'pinky_01_l', 'pinky_02_l', 'pinky_03_l', 'pinky_04_leaf_l',
+    'clavicle_r', 'upperarm_r', 'lowerarm_r', 'hand_r',
+    'thumb_01_r', 'thumb_02_r', 'thumb_03_r', 'thumb_04_leaf_r',
+    'index_01_r', 'index_02_r', 'index_03_r', 'index_04_leaf_r',
+    'middle_01_r', 'middle_02_r', 'middle_03_r', 'middle_04_leaf_r',
+    'ring_01_r', 'ring_02_r', 'ring_03_r', 'ring_04_leaf_r',
+    'pinky_01_r', 'pinky_02_r', 'pinky_03_r', 'pinky_04_leaf_r',
+    'thigh_l', 'calf_l', 'foot_l', 'ball_l', 'ball_leaf_l',
+    'thigh_r', 'calf_r', 'foot_r', 'ball_r', 'ball_leaf_r'
+  ]
+
   /**
    * Validates that animation bones are compatible with target skeleton
    * @throws {IncompatibleSkeletonError} If bones don't match
@@ -10,19 +28,19 @@ export default class CustomAnimationValidation {
    */
   static validate_animation_bones_match (
     animation_clips: AnimationClip[],
-    skinned_meshes: SkinnedMesh[]
+    skinned_meshes: SkinnedMesh[] = []
   ): void {
-    if (skinned_meshes.length === 0) {
-      throw new Error('No skinned meshes available to validate animations.')
-    }
-
-    // Get target bone names from skeleton
+    // Get target bone names from skeleton or standard fallback
     const target_bone_names = new Set<string>()
-    skinned_meshes.forEach((skinned_mesh) => {
-      skinned_mesh.skeleton.bones.forEach((bone) => {
-        target_bone_names.add(bone.name.toLowerCase())
+    if (skinned_meshes.length > 0) {
+      skinned_meshes.forEach((skinned_mesh) => {
+        skinned_mesh.skeleton.bones.forEach((bone) => {
+          target_bone_names.add(bone.name.toLowerCase())
+        })
       })
-    })
+    } else {
+      CustomAnimationValidation.STANDARD_HUMAN_BONES.forEach(b => target_bone_names.add(b.toLowerCase()))
+    }
 
     const animation_bone_map = CustomAnimationValidation.get_animation_bones_by_clip(animation_clips)
     const animation_bone_names = new Set(animation_bone_map.keys())

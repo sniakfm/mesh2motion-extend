@@ -1,4 +1,35 @@
+<p align="right">
+  🌐 <b>English</b> | <a href="./README.ko.md">한국어 (Korean)</a>
+</p>
+
 <img src="./mesh2motion.svg" alt="Mesh2Motion Logo" width="400"/>
+
+> [!NOTE]
+> ### 📢 Custom Fork Notice
+> - **Attribution & Rights**: All rights to the original program belong to the [Mesh2Motion team](https://github.com/Mesh2Motion). Code modifications were made using the Gemini 3.8 model.
+> - **Purpose**: Created to easily import, retarget, and manage GLB animation files exported from [Motion2MixamoRig](https://github.com/MaxLiu22/Motion2MixamoRig) into Mesh2Motion.
+> - **Support**: If you find this project helpful, please support both awesome original projects:
+>   - [Mesh2Motion](https://github.com/Mesh2Motion)
+>   - [Motion2MixamoRig](https://github.com/MaxLiu22/Motion2MixamoRig)
+
+<details>
+<summary><b>🇰🇷 한국어 안내 (Click to expand Korean notice)</b></summary>
+
+> - **권리 안내**: 원본이 된 프로그램의 모든 권리는 [Mesh2Motion 개발팀](https://github.com/Mesh2Motion)에 있으며, 본 프로젝트는 Gemini 3.8 모델을 활용하여 코드를 일부 수정한 포크입니다.
+> - **목적**: [Motion2MixamoRig](https://github.com/MaxLiu22/Motion2MixamoRig)에서 export된 GLB 파일을 Mesh2Motion에 손쉽게 이식하고 관리하기 위해 만든 포크입니다.
+> - **지원 안내**: 이 프로그램이 마음에 드신다면, 아래 원본 프로젝트 개발팀들을 지원해주세요!
+>   - Mesh2Motion: https://github.com/Mesh2Motion
+>   - Motion2MixamoRig: https://github.com/MaxLiu22/Motion2MixamoRig
+
+자세한 한국어 설명 문서는 [README.ko.md](./README.ko.md)에서 확인하실 수 있습니다.
+</details>
+
+### ✨ Fork Features & Utilities
+- **Animation Filters**: 4 dedicated tabs (`All`, `Library`, `Imported`, `Selected`) for efficient navigation.
+- **Context Menu**: Right-click imported animations to rename (persisted in IndexedDB) or delete them (with optional local file deletion via Tauri).
+- **Auto Mixamo Clip Renaming**: Generic `mixamo.com` clip names are automatically resolved to their original file names.
+- **Motion2MixamoRig Bridge**: Includes `convert_mixamo_to_mesh2motion.py` and `.bat` to adapt rig bones for Mesh2Motion.
+- **One-Click Desktop Builder**: Run `build_desktop.bat` to build the Tauri desktop binary and bundle all utilities into `dist_desktop/`.
 
 <table>
   <tr>

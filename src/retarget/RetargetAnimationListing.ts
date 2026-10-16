@@ -1,5 +1,5 @@
 import { AnimationPlayer } from '../lib/processes/animations-listing/AnimationPlayer.ts'
-import { AnimationSearch } from '../lib/processes/animations-listing/AnimationSearch.ts'
+import { AnimationSearch, type AnimationViewMode } from '../lib/processes/animations-listing/AnimationSearch.ts'
 import { AnimationLoader } from '../lib/processes/animations-listing/AnimationLoader.ts'
 import { AnimationUtility } from '../lib/processes/animations-listing/AnimationUtility.ts'
 import { ArmExtensionControl } from '../lib/processes/animations-listing/ArmExtensionControl.ts'
@@ -12,6 +12,8 @@ import { UI } from '../lib/UI.ts'
 import { SkeletonType } from '../lib/enums/SkeletonType.ts'
 import { DownloadSettings } from '../lib/processes/export-to-file/DownloadSettings.ts'
 import { ModalDialog } from '../lib/ModalDialog.ts'
+import { CustomAnimationImporter } from '../lib/processes/animations-listing/CustomAnimationImporter.ts'
+import { AnimationContextMenu } from '../lib/processes/animations-listing/AnimationContextMenu.ts'
 
 /**
  * RetargetAnimationListing - Handles animation listing and playback specifically for retargeting workflow
@@ -37,20 +39,45 @@ export class RetargetAnimationListing extends EventTarget {
   private _added_event_listeners: boolean = false
 
   public animation_search: AnimationSearch | null = null
+  private animation_context_menu: AnimationContextMenu | null = null
 
   private is_animations_active: boolean = false
 
   private export_button: HTMLButtonElement | null = null
+
+  private readonly custom_animation_importer: CustomAnimationImporter
 
   constructor (theme_manager: ThemeManager, download_settings: DownloadSettings) {
     super()
     this.theme_manager = theme_manager
     this.download_settings = download_settings
     this.animation_player = new AnimationPlayer()
+    this.custom_animation_importer = new CustomAnimationImporter(this.animation_loader)
+
+    this.custom_animation_importer.set_import_context_provider(() => {
+      return {
+        skinned_meshes_to_animate: [],
+        skeleton_scale: 1.0
+      }
+    })
+
+    this.custom_animation_importer.addEventListener('import-success', (event: Event) => {
+      const new_clips = (event as CustomEvent<TransformedAnimationClipPair[]>).detail
+      this.animation_clips_loaded.push(...new_clips)
+      this.on_all_animations_loaded()
+
+      // Switch to Imported view mode to immediately surface imported animations
+      const imported_radio = document.querySelector('input[name="animation-view-mode"][value="imported"]') as HTMLInputElement | null
+      if (imported_radio != null) {
+        imported_radio.checked = true
+        this.animation_search?.set_view_mode('imported')
+      }
+    })
   }
 
   public begin (): void {
     this.reset_step_data()
+    this.custom_animation_importer.set_enabled(true)
 
     if (!this._added_event_listeners) {
       this.add_event_listeners()
@@ -197,6 +224,40 @@ export class RetargetAnimationListing extends EventTarget {
 
     this.animation_search.initialize_animations(animation_clips)
 
+    // Setup right-click context menu (Change Name, Delete)
+    this.animation_context_menu = new AnimationContextMenu(
+      this.animation_search,
+      () => this.animation_clips_loaded,
+      (deletedIndex, storageId) => {
+        let idx = -1
+        if (storageId != null && storageId !== '') {
+          idx = this.animation_clips_loaded.findIndex(
+            pair => pair.metadata?.custom_storage_id === storageId || pair.metadata?.fileName === storageId
+          )
+        }
+        if (idx === -1 && deletedIndex >= 0 && deletedIndex < this.animation_clips_loaded.length) {
+          idx = deletedIndex
+        }
+
+        if (idx >= 0 && idx < this.animation_clips_loaded.length) {
+          this.animation_clips_loaded.splice(idx, 1)
+        }
+
+        if (this.current_playing_index === idx) {
+          this.current_playing_index = -1
+          this.animation_player.clear_animation()
+        } else if (this.current_playing_index > idx) {
+          this.current_playing_index--
+        }
+
+        this.update_export_button_enabled_state()
+        const listing_count_element = document.getElementById('animation-listing-count')
+        if (listing_count_element !== null) {
+          listing_count_element.textContent = this.animation_clips_loaded.length.toString() + ' animations'
+        }
+      }
+    )
+
     // Add click event listeners to animation items for playback
     const animations_container = document.getElementById('animations-items')
     if (animations_container !== null) {
@@ -298,13 +359,13 @@ export class RetargetAnimationListing extends EventTarget {
         })
     })
 
-    // event listener for animation view mode tabs (Library vs Selected)
+    // event listener for animation view mode tabs (All vs Library vs Imported vs Selected)
     const animation_view_radios = document.querySelectorAll('input[name="animation-view-mode"]')
     animation_view_radios.forEach((radio) => {
       radio.addEventListener('change', (event) => {
         const target = event.target as HTMLInputElement
-        const show_selected_only = target.value === 'selected'
-        this.animation_search?.set_show_selected_only(show_selected_only)
+        const mode = target.value as AnimationViewMode
+        this.animation_search?.set_view_mode(mode)
       })
     })
 

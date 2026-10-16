@@ -5,6 +5,7 @@ import { type SkeletonType } from '../../enums/SkeletonType.ts'
 import { RigConfig } from '../../RigConfig.ts'
 import { type AnimationClipMetadata, type TransformedAnimationClipPair } from './interfaces/TransformedAnimationClipPair.ts'
 import { LoadError, NoAnimationsError } from './AnimationImportErrors.ts'
+import { CustomAnimationStorage } from './CustomAnimationStorage.ts'
 
 export interface AnimationLoadProgress {
   loaded: number
@@ -107,12 +108,61 @@ export class AnimationLoader extends EventTarget {
 
               // Check if all animations are loaded
               if (completed_loads === total_loads) {
-                // Sort animations alphabetically by name
-                loaded_clips.sort((a, b) => {
-                  return a.display_animation_clip.name.localeCompare(b.display_animation_clip.name)
-                })
+                // Also load any custom animations saved in persistent storage
+                CustomAnimationStorage.get_all_animations(this.skeleton_type ?? undefined)
+                  .then(async (custom_records) => {
+                    for (const record of custom_records) {
+                      try {
+                        const custom_clips = await this.load_animations_from_array_buffer(
+                          record.data,
+                          skeleton_scale,
+                          {
+                            source_type: 'custom-import',
+                            tags: [],
+                            custom_storage_id: record.id,
+                            fileName: record.fileName,
+                            filePath: record.filePath
+                          }
+                        )
 
-                resolve(loaded_clips)
+                        const clean_name = (record.name != null && record.name.trim() !== '')
+                          ? record.name
+                          : (record.fileName || record.id).replace(/\.[^/.]+$/, '').replace(/_/g, ' ')
+
+                        custom_clips.forEach((clip, idx) => {
+                          clip.metadata.custom_storage_id = record.id
+                          clip.metadata.fileName = record.fileName
+                          clip.metadata.filePath = record.filePath
+
+                          const raw_name = clip.display_animation_clip.name.trim().toLowerCase()
+                          if (record.name != null && record.name.trim() !== '') {
+                            clip.display_animation_clip.name = custom_clips.length > 1 ? `${clean_name} ${idx + 1}` : clean_name
+                            clip.original_animation_clip.name = clip.display_animation_clip.name
+                          } else if (raw_name === 'mixamo.com' || raw_name.includes('mixamo') || raw_name === '') {
+                            clip.display_animation_clip.name = custom_clips.length > 1 ? `${clean_name} ${idx + 1}` : clean_name
+                            clip.original_animation_clip.name = clip.display_animation_clip.name
+                          }
+                        })
+
+                        loaded_clips.push(...custom_clips)
+                      } catch (err) {
+                        console.warn('Could not load stored animation:', record.name, err)
+                      }
+                    }
+
+                    // Sort animations alphabetically by name
+                    loaded_clips.sort((a, b) => {
+                      return a.display_animation_clip.name.localeCompare(b.display_animation_clip.name)
+                    })
+
+                    resolve(loaded_clips)
+                  })
+                  .catch(() => {
+                    loaded_clips.sort((a, b) => {
+                      return a.display_animation_clip.name.localeCompare(b.display_animation_clip.name)
+                    })
+                    resolve(loaded_clips)
+                  })
               }
             } catch (error) {
               if (!has_error) {
@@ -217,6 +267,44 @@ export class AnimationLoader extends EventTarget {
           URL.revokeObjectURL(file_url)
           const error_message = error instanceof Error ? error.message : String(error)
           reject(new LoadError(`Failed to load animation file ${file.name}: ${error_message}`))
+        }
+      )
+    })
+  }
+
+  /**
+   * Loads animations from an ArrayBuffer (e.g. from IndexedDB or file read)
+   */
+  public async load_animations_from_array_buffer (
+    buffer: ArrayBuffer,
+    skeleton_scale: number = 1.0,
+    metadata_override: Partial<AnimationClipMetadata> = {}
+  ): Promise<TransformedAnimationClipPair[]> {
+    return await new Promise((resolve, reject) => {
+      this.gltf_loader.parse(
+        buffer,
+        '',
+        (gltf: any) => {
+          try {
+            const animations = gltf.animations as AnimationClip[]
+            if (animations === null || animations === undefined || animations.length === 0) {
+              throw new NoAnimationsError('No animations found in the GLB data.')
+            }
+
+            const processed_clips = this.process_loaded_animations(
+              animations,
+              skeleton_scale,
+              metadata_override
+            )
+            resolve(processed_clips)
+          } catch (error) {
+            const error_message = error instanceof Error ? error.message : String(error)
+            reject(new LoadError(`Failed to process animations from buffer: ${error_message}`))
+          }
+        },
+        (error) => {
+          const error_message = error instanceof Error ? error.message : String(error)
+          reject(new LoadError(`Failed to parse GLB buffer: ${error_message}`))
         }
       )
     })

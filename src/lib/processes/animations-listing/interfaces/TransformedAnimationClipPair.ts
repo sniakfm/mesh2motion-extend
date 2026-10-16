@@ -5,6 +5,9 @@ export type AnimationSourceType = 'default-library' | 'custom-import'
 export interface AnimationClipMetadata {
   source_type: AnimationSourceType
   tags: string[]
+  custom_storage_id?: string
+  fileName?: string
+  filePath?: string
 }
 
 export interface TransformedAnimationClipPair {
