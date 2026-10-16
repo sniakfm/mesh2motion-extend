@@ -26,9 +26,9 @@
 
 ### ✨ Fork Features & Utilities
 - **Animation Filters**: 4 dedicated tabs (`All`, `Library`, `Imported`, `Selected`) for efficient navigation.
-- **Context Menu**: Right-click imported animations to rename (persisted in IndexedDB) or delete them (with optional local file deletion via Tauri).
+- **Context Menu**: Right-click imported animations to rename or delete them (with optional local file deletion via Tauri).
 - **Auto Mixamo Clip Renaming**: Generic `mixamo.com` clip names are automatically resolved to their original file names.
-- **Isolated Storage Folder (`storage/`)**: Imported animations are saved directly to a dedicated `storage/` directory next to the binary, eliminating heavy IndexedDB bloat. Drop `.glb` files directly into `storage/` for automatic detection!
+- **Isolated Storage & Manifest (`storage/manifest.json`)**: All imported animation files and their customized names/metadata are stored directly in the `storage/` directory next to the binary (`storage/manifest.json`), eliminating hidden IndexedDB bloat. Drop `.glb` files directly into `storage/` for automatic detection!
 - **Motion2MixamoRig Bridge**: Includes `convert_mixamo_to_mesh2motion.py` and `.bat` to adapt rig bones for Mesh2Motion.
 - **One-Click Desktop Builder**: Run `build_desktop.bat` to build the Tauri desktop binary and bundle all utilities into `dist_desktop/`.
 

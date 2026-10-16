@@ -93,6 +93,24 @@ fn list_storage_files() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+fn read_storage_manifest() -> Result<String, String> {
+  let storage_dir = get_storage_dir()?;
+  let manifest_path = storage_dir.join("manifest.json");
+  if !manifest_path.exists() || !manifest_path.is_file() {
+    return Ok("{}".to_string());
+  }
+  std::fs::read_to_string(&manifest_path).map_err(|e| format!("Failed to read manifest: {}", e))
+}
+
+#[tauri::command]
+fn save_storage_manifest(manifest_json: String) -> Result<bool, String> {
+  let storage_dir = get_storage_dir()?;
+  let manifest_path = storage_dir.join("manifest.json");
+  std::fs::write(&manifest_path, manifest_json).map_err(|e| format!("Failed to write manifest: {}", e))?;
+  Ok(true)
+}
+
+#[tauri::command]
 fn delete_local_file(file_path: String) -> Result<bool, String> {
   let path = std::path::PathBuf::from(&file_path);
   if path.is_file() {
@@ -130,7 +148,9 @@ pub fn run() {
       save_to_storage,
       read_from_storage,
       delete_from_storage,
-      list_storage_files
+      list_storage_files,
+      read_storage_manifest,
+      save_storage_manifest
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
