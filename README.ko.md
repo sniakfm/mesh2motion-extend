@@ -32,7 +32,12 @@
    - `convert_mixamo_to_mesh2motion.py` 및 `.bat` 스크립트를 통해 Motion2MixamoRig에서 내보낸 본 구조를 Mesh2Motion용 애니메이션으로 자동 변환할 수 있습니다.
 
 5. **Tauri 데스크톱 원클릭 빌드 도구**
-   - `build_desktop.bat` 실행 시 데스크톱 앱을 컴파일하고, `dist_desktop/` 폴더에 실행 파일 및 유틸리티 스크립트를 자동 패키징합니다.
+   - `build_desktop.bat` 실행 시 데스크톱 앱을 컴파일하고, `dist_desktop/` 폴더에 실행 파일, `storage/` 폴더 및 유틸리티 스크립트를 자동 패키징합니다.
+
+6. **독립 스토리지 폴더 분리 (`storage/`) 및 최적화**
+   - Import된 대용량 애니메이션 파일이 IndexedDB에 쌓여 앱이 비대해지고 느려지는 문제를 방지하기 위해, 실행 파일(`.exe`) 옆의 `storage/` 폴더에 파일을 직접 분리 저장합니다.
+   - 브라우저 데이터베이스(IndexedDB)에는 최소한의 메타데이터만 남겨 수십~수백 MB의 용량 낭비를 원천 차단합니다.
+   - 탐색기에서 `storage/` 폴더에 `.glb` 파일을 직접 집어넣기만 해도 앱 실행 시 라이브러리에 자동 등록됩니다.
 
 ---
 

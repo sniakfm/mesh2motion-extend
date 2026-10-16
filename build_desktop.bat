@@ -37,6 +37,7 @@ echo [3/3] Packaging distribution files...
 
 set "DIST_DIR=dist_desktop"
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
+if not exist "%DIST_DIR%\storage" mkdir "%DIST_DIR%\storage"
 
 copy /y "!EXE_PATH!" "%DIST_DIR%\mesh2motion.exe" > nul
 if exist "convert_mixamo_to_mesh2motion.bat" (
@@ -48,6 +49,7 @@ if exist "convert_mixamo_to_mesh2motion.py" (
 
 if exist "..\..\mesh2motion.exe" (
     copy /y "!EXE_PATH!" "..\..\mesh2motion.exe" > nul
+    if not exist "..\..\storage" mkdir "..\..\storage"
     echo Also updated ..\..\mesh2motion.exe
 )
 
